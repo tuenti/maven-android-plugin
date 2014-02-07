@@ -150,6 +150,13 @@ public class GenerateSourcesMojo extends AbstractAndroidMojo
     protected boolean mergeManifests;
 
     /**
+     * Whether or not to reuse existing processed resources for apklibs instead of generating them.
+     *
+     * @parameter expression="${android.reuseApkLibs}" default-value="false"
+     */
+    protected boolean reuseApkLibs;
+
+    /**
      * Override default generated folder containing R.java
      *
      * @parameter expression="${android.genDirectory}" default-value="${project.build.directory}/generated-sources/r"
@@ -676,13 +683,39 @@ public class GenerateSourcesMojo extends AbstractAndroidMojo
 
         for ( Artifact artifact : getAllRelevantDependencyArtifacts() )
         {
-            if ( artifact.getType().equals( APKLIB ) )
+            if ( artifact.getType().equals( APKLIB ) && shouldGenerateRFor( artifact ) )
             {
                 generateRForApkLibDependency( artifact );
             }
         }
 
         project.addCompileSourceRoot( genDirectory.getAbsolutePath() );
+    }
+
+    private boolean shouldGenerateRFor( Artifact apklibArtifact )
+    {
+        if (!reuseApkLibs)
+        {
+            return true;
+        }
+
+        if ( classFileRFor( apklibArtifact ).exists() )
+        {
+            getLog().info( "R found at " + classFileForR + ", so it won't be regenerated" );
+            return false;
+        }
+
+        return true;
+    }
+
+    private File classFileRFor( Artifact apklibArtifact )
+    {
+        final String libraryUnpackDirectory = getLibraryUnpackDirectory( apklibArtifact );
+        String libPackage  = extractPackageNameFromAndroidManifest( new File( libraryUnpackDirectory +
+                File.separator + "AndroidManifest.xml" ) );
+
+        return new File( project.getBuild().getOutputDirectory() + File.separator
+                + libPackage.replace( ".", File.separator ) + File.separator + "R.class" );
     }
 
     private void generateRForApkLibDependency( Artifact apklibArtifact ) throws MojoExecutionException
