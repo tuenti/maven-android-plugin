@@ -150,6 +150,13 @@ public class GenerateSourcesMojo extends AbstractAndroidMojo
     protected boolean mergeManifests;
 
     /**
+     * Whether or not to reuse existing processed resources for apklibs instead of generating them.
+     *
+     * @parameter expression="${android.reuseApkLibs}" default-value="false"
+     */
+    protected boolean reuseApkLibs;
+
+    /**
      * Override default generated folder containing R.java
      *
      * @parameter expression="${android.genDirectory}" default-value="${project.build.directory}/generated-sources/r"
@@ -676,13 +683,43 @@ public class GenerateSourcesMojo extends AbstractAndroidMojo
 
         for ( Artifact artifact : getAllRelevantDependencyArtifacts() )
         {
-            if ( artifact.getType().equals( APKLIB ) )
+            if ( artifact.getType().equals( APKLIB ) && shouldGenerateRFor( artifact ) )
             {
                 generateRForApkLibDependency( artifact );
             }
         }
 
         project.addCompileSourceRoot( genDirectory.getAbsolutePath() );
+    }
+
+    private boolean shouldGenerateRFor( Artifact apklibArtifact )
+    {
+        if (!reuseApkLibs)
+        {
+            return true;
+        }
+
+        final String libraryUnpackDirectory = getLibraryUnpackDirectory( apklibArtifact );
+        boolean shouldGenerateR = true;
+        try
+        {
+            String libPackage  = extractPackageNameFromAndroidManifest( new File( libraryUnpackDirectory +
+                    File.separator + "AndroidManifest.xml" ) );
+
+            File classFileForR = new File( project.getBuild().getOutputDirectory() + File.separator
+                    + libPackage.replace( ".", File.separator ) + File.separator + "R.class" );
+            if ( classFileForR.exists() )
+            {
+                getLog().info( "R found at " + classFileForR + ", so it won't be regenerated" );
+                shouldGenerateR = false;
+            }
+        }
+        catch ( MojoExecutionException e )
+        {
+            // do nothing, will return default value
+        }
+
+        return shouldGenerateR;
     }
 
     private void generateRForApkLibDependency( Artifact apklibArtifact ) throws MojoExecutionException
