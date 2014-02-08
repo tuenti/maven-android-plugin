@@ -694,28 +694,36 @@ public class GenerateSourcesMojo extends AbstractAndroidMojo
 
     private boolean shouldGenerateRFor( Artifact apklibArtifact )
     {
-        if (!reuseApkLibs)
+        if ( !reuseApkLibs )
         {
             return true;
         }
 
-        if ( classFileRFor( apklibArtifact ).exists() )
+        if ( classFileRExistsFor( apklibArtifact ) )
         {
-            getLog().info( "R found at " + classFileForR + ", so it won't be regenerated" );
+            getLog().info( "R found for " + apklibArtifact + ", so it won't be regenerated" );
             return false;
         }
 
         return true;
     }
 
-    private File classFileRFor( Artifact apklibArtifact )
+    private boolean classFileRExistsFor( Artifact apklibArtifact )
     {
-        final String libraryUnpackDirectory = getLibraryUnpackDirectory( apklibArtifact );
-        String libPackage  = extractPackageNameFromAndroidManifest( new File( libraryUnpackDirectory +
-                File.separator + "AndroidManifest.xml" ) );
+        String libPackage;
+        try
+        {
+            String libraryUnpackDirectory = getLibraryUnpackDirectory( apklibArtifact );
+            libPackage = extractPackageNameFromAndroidManifest( new File( libraryUnpackDirectory
+                    + File.separator + "AndroidManifest.xml" ) );
+        }
+        catch ( MojoExecutionException e )
+        {
+            return false;
+        }
 
         return new File( project.getBuild().getOutputDirectory() + File.separator
-                + libPackage.replace( ".", File.separator ) + File.separator + "R.class" );
+                + libPackage.replace( ".", File.separator ) + File.separator + "R.class" ).exists();
     }
 
     private void generateRForApkLibDependency( Artifact apklibArtifact ) throws MojoExecutionException
