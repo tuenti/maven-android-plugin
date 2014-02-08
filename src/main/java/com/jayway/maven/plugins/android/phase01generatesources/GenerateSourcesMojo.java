@@ -701,7 +701,7 @@ public class GenerateSourcesMojo extends AbstractAndroidMojo
 
         if ( classFileRExistsFor( apklibArtifact ) )
         {
-            getLog().info( "R found for " + apklibArtifact + ", so it won't be regenerated" );
+            getLog().info( "R found for " + apklibArtifact.getId() + ", so it won't be regenerated" );
             return false;
         }
 
